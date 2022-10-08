@@ -12,7 +12,7 @@ import {
   State,
   isReady,
   Poseidon,
-  Party
+  AccountUpdate
 } from 'snarkyjs';
 import { tic, toc } from './tictoc';
 
@@ -73,7 +73,7 @@ async function deploy() {
   let zkappKey = PrivateKey.random();
   let zkappAddress = zkappKey.toPublicKey();
   tic('compile');
-  let { verificationKey } = await SudokuZkapp.compile(zkappAddress);
+  let { verificationKey } = await SudokuZkapp.compile();
   toc();
 
   let zkappInterface = {
@@ -87,7 +87,7 @@ async function deploy() {
 
   let zkapp = new SudokuZkapp(zkappAddress);
   let tx = await Mina.transaction(feePayer, () => {
-    Party.fundNewAccount(feePayer);
+    AccountUpdate.fundNewAccount(feePayer);
     zkapp.deploy({ zkappKey, verificationKey });
   });
   await tx.send().wait();
