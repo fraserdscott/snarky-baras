@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { render } from 'react-dom';
-import { generateSudoku, cloneSudoku } from './sudoku-lib.js';
+import { cloneSudoku } from './sudoku-lib.js';
 
 // some style params
 let grey = '#cccccc';
 let darkGrey = '#999999';
 let lightGrey = '#f6f6f6';
-let thick = 'black solid 4px';
 let thin = `${grey} solid 1px`;
 let sudokuWidth = 450;
 let rightColumnWidth = 275;
@@ -33,19 +32,14 @@ function App() {
   );
 }
 
-function GenerateSudoku({ setZkapp, ease, setEase, goForward }) {
-  let [sudoku, setSudoku] = useState(() => generateSudoku(1 - ease));
-  useEffect(() => {
-    setSudoku(generateSudoku(1 - ease));
-  }, [ease]);
-
+function GenerateSudoku({ setZkapp, goForward }) {
   let [isLoading, setLoading] = useState(false);
 
   async function deploy() {
     if (isLoading) return;
     setLoading(true);
     Sudoku = await import('../dist/sudoku.js');
-    let zkapp = await Sudoku.deploy(sudoku);
+    let zkapp = await Sudoku.deploy();
     setLoading(false);
     setZkapp(zkapp);
     goForward();
@@ -53,35 +47,17 @@ function GenerateSudoku({ setZkapp, ease, setEase, goForward }) {
 
   return (
     <Layout>
-      <Header>Step 1. Generate a Sudoku</Header>
+      <Header>Step 1. Deploy the contract</Header>
 
-      <SudokuTable sudoku={sudoku} />
-
-      <div style={{ width: rightColumnWidth + 'px' }}>
-        <p>Adjust the difficulty:</p>
-        <Space h="1.5rem" />
-
-        <input
-          type="range"
-          value={ease * 100}
-          style={{ width: '100%' }}
-          onChange={(e) => {
-            setEase(Number(e.target.value) / 100);
-          }}
-        />
-        <Space h="2.5rem" />
-
-        <Button onClick={deploy} disabled={isLoading}>
-          Deploy
-        </Button>
-      </div>
+      <Button onClick={deploy} disabled={isLoading}>
+        Deploy
+      </Button>
     </Layout>
   );
 }
 
 function SolveSudoku({ zkapp, goBack }) {
-  let sudoku = zkapp?.sudoku ?? [];
-  let [solution, setSolution] = useState(sudoku);
+  let [sudoku, setSudoku] = useState(() => Array(7).fill().map(() => Array(7).fill(0)));
   let [zkappState, pullZkappState] = useZkappState(zkapp);
 
   let [isLoading, setLoading] = useState(false);
@@ -89,28 +65,21 @@ function SolveSudoku({ zkapp, goBack }) {
   async function submit() {
     if (isLoading) return;
     setLoading(true);
-    await zkapp.submitSolution(solution);
+    await zkapp.validateSolution(sudoku);
     pullZkappState();
     setLoading(false);
   }
 
   return (
     <Layout>
-      <Header goBack={goBack}>Step 2. Solve the Sudoku</Header>
-
+      <Header goBack={goBack}>Step 2. Create and verify your map layout</Header>
       <SudokuTable
         sudoku={sudoku}
-        editable
-        solution={solution}
-        setSolution={setSolution}
+        setSudoku={setSudoku}
       />
 
       <div style={{ width: rightColumnWidth + 'px' }}>
-        <p>Zkapp state:</p>
-        <Space h=".5rem" />
-
-        <ZkappState state={zkappState} />
-        <Space h="2.5rem" />
+        <div>You must place exactly 10 ships.</div>
 
         <Button onClick={submit} disabled={isLoading}>
           Submit solution
@@ -131,93 +100,6 @@ function useZkappState(zkapp) {
     setState(zkapp?.getState());
   }, [zkapp]);
   return [state, pullZkappState];
-}
-
-// pure UI components
-
-function Header({ goBack, children }) {
-  return (
-    <div style={{ position: 'relative' }}>
-      <h1 style={{ fontSize: '36px', textAlign: 'center' }}>{children}</h1>
-      {goBack && (
-        <div
-          onClick={goBack}
-          title="Back to step 1"
-          style={{
-            position: 'absolute',
-            cursor: 'pointer',
-            left: '25px',
-            top: 0,
-            fontSize: '40px',
-          }}
-        >
-          👈
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SudokuTable({ sudoku, editable, solution, setSolution }) {
-  let cellSize = sudokuWidth / 9 + 'px';
-  let fontSize = sudokuWidth / 18 + 'px';
-  return (
-    <table
-      style={{
-        border: thin,
-        borderCollapse: 'collapse',
-        fontSize,
-      }}
-    >
-      <tbody>
-        {sudoku.map((row, i) => (
-          <tr key={i}>
-            {row.map((x, j) => (
-              <td
-                key={j}
-                style={{
-                  width: cellSize,
-                  height: cellSize,
-                  borderRight: j === 2 || j === 5 ? thick : thin,
-                  borderBottom: i === 2 || i === 5 ? thick : thin,
-                }}
-              >
-                {!!x || !editable ? (
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                    }}
-                  >
-                    {x || ''}
-                  </div>
-                ) : (
-                  <input
-                    type="text"
-                    value={solution[i][j] || ''}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      textAlign: 'center',
-                      fontSize,
-                      backgroundColor: lightGrey,
-                      border: thin,
-                    }}
-                    onChange={(e) => {
-                      let newSudoku = cloneSudoku(solution);
-                      newSudoku[i][j] = Number(e.target.value);
-                      setSolution(newSudoku);
-                    }}
-                  ></input>
-                )}
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
 }
 
 function ZkappState({ state = {} }) {
@@ -251,6 +133,76 @@ function ZkappState({ state = {} }) {
         </span>
       </pre>
     </div>
+  );
+}
+
+// pure UI components
+
+function Header({ goBack, children }) {
+  return (
+    <div style={{ position: 'relative' }}>
+      <h1 style={{ fontSize: '36px', textAlign: 'center' }}>{children}</h1>
+      {goBack && (
+        <div
+          onClick={goBack}
+          title="Back to step 1"
+          style={{
+            position: 'absolute',
+            cursor: 'pointer',
+            left: '25px',
+            top: 0,
+            fontSize: '40px',
+          }}
+        >
+          👈
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SudokuTable({ sudoku, setSudoku }) {
+  let cellSize = sudokuWidth / 9 + 'px';
+
+  return (
+    <table
+      style={{
+        border: thin,
+        borderCollapse: 'collapse',
+      }}
+    >
+      <tbody>
+        {sudoku.map((row, i) => (
+          <tr key={i}>
+            {row.map((x, j) => (
+              <td
+                key={j}
+                style={{
+                  width: cellSize,
+                  height: cellSize,
+                  borderRight: thin,
+                  borderBottom: thin,
+                }}
+              > <button
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  textAlign: 'center',
+                  backgroundColor: lightGrey,
+                  border: thin,
+                }}
+                onClick={() => {
+                  let newSudoku = cloneSudoku(sudoku);
+                  newSudoku[i][j] = x === 0 ? 1 : 0;
+                  setSudoku(newSudoku);
+                }}
+              >{x === 1 ? '🛳' : '🌊'}</button>
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
