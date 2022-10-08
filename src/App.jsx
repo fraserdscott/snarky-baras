@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { render } from 'react-dom';
+import { BOARD_WIDTH, CAPY_COUNT } from '../dist/sudoku.js';
 import { cloneSudoku } from './sudoku-lib.js';
 
 // some style params
@@ -19,13 +20,16 @@ function App() {
 
   let [view, setView] = useState(1);
   let goForward = () => setView(2);
+  let goForwarder = () => setView(3);
   let goBack = () => setView(1);
   return (
     <Container>
       {view === 1 ? (
         <DeployContract {...{ setZkapp, goForward }} />
+      ) : view === 2 ? (
+        <SetBoard {...{ zkapp, goBack, player: 1, goForwarder }} />
       ) : (
-        <VerifyBoard {...{ zkapp, goBack }} />
+        <SetBoard {...{ zkapp, goBack, player: 2, goForwarder }} />
       )}
     </Container>
   );
@@ -55,34 +59,96 @@ function DeployContract({ setZkapp, goForward }) {
   );
 }
 
-function VerifyBoard({ zkapp, goBack }) {
-  let [board, setBoard] = useState(() => Array(7).fill().map(() => Array(7).fill(0)));
-
+function SetBoard({ zkapp, goBack, goForwarder, player }) {
+  let [board, setBoard] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
+  let [zkappState, pullZkappState] = useZkappState(zkapp);
   let [isLoading, setLoading] = useState(false);
 
   async function submit() {
     if (isLoading) return;
     setLoading(true);
-    await zkapp.validateSolution(board);
+    await zkapp.setBoard(board, player);
+    pullZkappState();
     setLoading(false);
+    goForwarder();
   }
 
   return (
     <Layout>
-      <Header goBack={goBack}>Step 2. Verify your map layout</Header>
+      <Header goBack={goBack}>Player {player}: set map layout</Header>
+
       <Board
         board={board}
         setBoard={setBoard}
       />
 
       <div style={{ width: rightColumnWidth + 'px' }}>
-        <div>You must place exactly 10 ships.</div>
+        <p>Zkapp state:</p>
+        <Space h=".5rem" />
+
+        <ZkappState state={zkappState} />
+        <Space h="2.5rem" />
+        <div>You must place exactly {CAPY_COUNT} ships.</div>
 
         <Button onClick={submit} disabled={isLoading}>
-          Verify layout
+          Set layout
         </Button>
       </div>
     </Layout>
+  );
+}
+
+function useZkappState(zkapp) {
+  let [state, setState] = useState();
+  let pullZkappState = useCallback(() => {
+    let state = zkapp?.getState();
+    setState(state);
+    return state;
+  }, [zkapp]);
+  useEffect(() => {
+    setState(zkapp?.getState());
+  }, [zkapp]);
+  return [state, pullZkappState];
+}
+
+function ZkappState({ state = {} }) {
+  let { commitment1 = '', commitment2 = '' } = state;
+  return (
+    <div
+      style={{
+        backgroundColor: lightGrey,
+        border: thin,
+        padding: '8px',
+      }}
+    >
+      <pre style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <b>commitment1</b>
+        <span
+          title={commitment1}
+          style={{
+            width: '100px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {commitment1}
+        </span>
+      </pre>
+      <Space h=".5rem" />
+      <pre style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <b>commitment2</b>
+        <span
+          title={commitment2}
+          style={{
+            width: '100px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {commitment2}
+        </span>
+      </pre>
+    </div>
   );
 }
 

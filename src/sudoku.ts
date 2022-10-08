@@ -7,7 +7,6 @@ import {
   method,
   PrivateKey,
   Mina,
-  Bool,
   state,
   State,
   isReady,
@@ -23,7 +22,7 @@ await isReady;
 export const BOARD_WIDTH = 7;
 export const CAPY_COUNT = 10;
 
-class Sudoku extends CircuitValue {
+class Board extends CircuitValue {
   @matrixProp(Field, BOARD_WIDTH, BOARD_WIDTH) value: Field[][];
 
   constructor(value: number[][]) {
@@ -37,21 +36,39 @@ class Sudoku extends CircuitValue {
 }
 
 class SudokuZkapp extends SmartContract {
-  @state(Bool) isSolved = State<Bool>();
+  @state(Field) commitment1 = State<Field>();
+  @state(Field) commitment2 = State<Field>();
 
-  // Check that the instance is valid
-  @method validateSolution(sudokuInstance: Sudoku) {
-    let sudoku = sudokuInstance.value;
+  @method setBoard1(boardInstance: Board) {
+    this.commitment2.assertEquals(Field(0));
+
+    let board = boardInstance.value;
 
     let sum = Field(0);
     for (let i = 0; i < BOARD_WIDTH; i++) {
       for (let j = 0; j < BOARD_WIDTH; j++) {
-        sum = sum.add(sudoku[i][j]);
+        sum = sum.add(board[i][j]);
       }
     }
     sum.assertEquals(CAPY_COUNT);
 
-    this.isSolved.set(Bool(true));
+    this.commitment1.set(boardInstance.hash());
+  }
+
+  @method setBoard2(boardInstance: Board) {
+    this.commitment2.assertEquals(Field(0));
+
+    let board = boardInstance.value;
+
+    let sum = Field(0);
+    for (let i = 0; i < BOARD_WIDTH; i++) {
+      for (let j = 0; j < BOARD_WIDTH; j++) {
+        sum = sum.add(board[i][j]);
+      }
+    }
+    sum.assertEquals(CAPY_COUNT);
+
+    this.commitment2.set(boardInstance.hash());
   }
 }
 
@@ -60,12 +77,11 @@ const Local = Mina.LocalBlockchain();
 Mina.setActiveInstance(Local);
 let feePayer = Local.testAccounts[0].privateKey;
 
-type SudokuInterface = {
-  sudoku: number[][];
-  validateSolution(solution: number[][]): Promise<void>;
-  getState(): { sudokuHash: string; isSolved: boolean };
+type BoardInterface = {
+  setBoard(board: number[][]): Promise<void>;
+  getState(): { commitment1: string; commitment2: string };
 };
-let isDeploying = null as null | SudokuInterface;
+let isDeploying = null as null | BoardInterface;
 
 async function deploy() {
   if (isDeploying) return isDeploying;
@@ -77,8 +93,8 @@ async function deploy() {
   toc();
 
   let zkappInterface = {
-    validateSolution(sudoku: number[][]) {
-      return validateSolution(zkappAddress, sudoku);
+    setBoard(board: number[][], player: number) {
+      return setBoard(zkappAddress, board, player);
     },
     getState() {
       return getState(zkappAddress);
@@ -96,14 +112,15 @@ async function deploy() {
   return zkappInterface;
 }
 
-async function validateSolution(
+async function setBoard(
   zkappAddress: PublicKey,
-  sudoku: number[][]
+  sudoku: number[][],
+  player: number
 ) {
   let zkapp = new SudokuZkapp(zkappAddress);
   try {
     let tx = await Mina.transaction(feePayer, () => {
-      zkapp.validateSolution(new Sudoku(sudoku));
+      player === 1 ? zkapp.setBoard1(new Board(sudoku)) : zkapp.setBoard2(new Board(sudoku));
     });
     tic('prove');
     await tx.prove();
@@ -117,5 +134,12 @@ async function validateSolution(
 
 function getState(zkappAddress: PublicKey) {
   let zkapp = new SudokuZkapp(zkappAddress);
-  return {};
+  let commitment1 = fieldToHex(zkapp.commitment1.get());
+  let commitment2 = fieldToHex(zkapp.commitment2.get());
+
+  return { commitment1, commitment2 };
+}
+
+function fieldToHex(field: Field) {
+  return BigInt(field.toString()).toString(16);
 }
