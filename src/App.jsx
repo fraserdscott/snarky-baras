@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { render } from 'react-dom';
 import { cloneSudoku } from './sudoku-lib.js';
 
@@ -7,7 +7,7 @@ let grey = '#cccccc';
 let darkGrey = '#999999';
 let lightGrey = '#f6f6f6';
 let thin = `${grey} solid 1px`;
-let sudokuWidth = 450;
+let gridWidth = 450;
 let rightColumnWidth = 275;
 
 let Sudoku; // this will hold the dynamically imported './sudoku-zkapp.ts'
@@ -16,7 +16,6 @@ render(<App />, document.querySelector('#root'));
 
 function App() {
   let [zkapp, setZkapp] = useState();
-  let [ease, setEase] = useState(0.5);
 
   let [view, setView] = useState(1);
   let goForward = () => setView(2);
@@ -24,15 +23,15 @@ function App() {
   return (
     <Container>
       {view === 1 ? (
-        <GenerateSudoku {...{ setZkapp, ease, setEase, goForward }} />
+        <DeployContract {...{ setZkapp, goForward }} />
       ) : (
-        <SolveSudoku {...{ zkapp, goBack }} />
+        <VerifyBoard {...{ zkapp, goBack }} />
       )}
     </Container>
   );
 }
 
-function GenerateSudoku({ setZkapp, goForward }) {
+function DeployContract({ setZkapp, goForward }) {
   let [isLoading, setLoading] = useState(false);
 
   async function deploy() {
@@ -56,83 +55,34 @@ function GenerateSudoku({ setZkapp, goForward }) {
   );
 }
 
-function SolveSudoku({ zkapp, goBack }) {
-  let [sudoku, setSudoku] = useState(() => Array(7).fill().map(() => Array(7).fill(0)));
-  let [zkappState, pullZkappState] = useZkappState(zkapp);
+function VerifyBoard({ zkapp, goBack }) {
+  let [board, setBoard] = useState(() => Array(7).fill().map(() => Array(7).fill(0)));
 
   let [isLoading, setLoading] = useState(false);
 
   async function submit() {
     if (isLoading) return;
     setLoading(true);
-    await zkapp.validateSolution(sudoku);
-    pullZkappState();
+    await zkapp.validateSolution(board);
     setLoading(false);
   }
 
   return (
     <Layout>
-      <Header goBack={goBack}>Step 2. Create and verify your map layout</Header>
-      <SudokuTable
-        sudoku={sudoku}
-        setSudoku={setSudoku}
+      <Header goBack={goBack}>Step 2. Verify your map layout</Header>
+      <Board
+        board={board}
+        setBoard={setBoard}
       />
 
       <div style={{ width: rightColumnWidth + 'px' }}>
         <div>You must place exactly 10 ships.</div>
 
         <Button onClick={submit} disabled={isLoading}>
-          Submit solution
+          Verify layout
         </Button>
       </div>
     </Layout>
-  );
-}
-
-function useZkappState(zkapp) {
-  let [state, setState] = useState();
-  let pullZkappState = useCallback(() => {
-    let state = zkapp?.getState();
-    setState(state);
-    return state;
-  }, [zkapp]);
-  useEffect(() => {
-    setState(zkapp?.getState());
-  }, [zkapp]);
-  return [state, pullZkappState];
-}
-
-function ZkappState({ state = {} }) {
-  let { sudokuHash = '', isSolved = false } = state;
-  return (
-    <div
-      style={{
-        backgroundColor: lightGrey,
-        border: thin,
-        padding: '8px',
-      }}
-    >
-      <pre style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <b>sudokuHash</b>
-        <span
-          title={sudokuHash}
-          style={{
-            width: '100px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {sudokuHash}
-        </span>
-      </pre>
-      <Space h=".5rem" />
-      <pre style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <b>isSolved</b>
-        <span style={{ color: isSolved ? 'green' : 'red' }}>
-          {isSolved.toString()}
-        </span>
-      </pre>
-    </div>
   );
 }
 
@@ -161,18 +111,18 @@ function Header({ goBack, children }) {
   );
 }
 
-function SudokuTable({ sudoku, setSudoku }) {
-  let cellSize = sudokuWidth / 9 + 'px';
+function Board({ board, setBoard }) {
+  let cellSize = gridWidth / 9 + 'px';
 
   return (
     <table
       style={{
         border: thin,
-        borderCollapse: 'collapse',
+        borderCollapse: 'collapse'
       }}
     >
       <tbody>
-        {sudoku.map((row, i) => (
+        {board.map((row, i) => (
           <tr key={i}>
             {row.map((x, j) => (
               <td
@@ -192,9 +142,9 @@ function SudokuTable({ sudoku, setSudoku }) {
                   border: thin,
                 }}
                 onClick={() => {
-                  let newSudoku = cloneSudoku(sudoku);
-                  newSudoku[i][j] = x === 0 ? 1 : 0;
-                  setSudoku(newSudoku);
+                  let newBoard = cloneSudoku(board);
+                  newBoard[i][j] = x === 0 ? 1 : 0;
+                  setBoard(newBoard);
                 }}
               >{x === 1 ? '🛳' : '🌊'}</button>
               </td>
