@@ -95,17 +95,18 @@ function SetBoard1({ zkapp, pullZkappState }) {
 function SetBoard2({ zkapp, pullZkappState }) {
   let [board, setBoard] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
   let [isLoading, setLoading] = useState(false);
+  let [choice, setChoice] = useState([0, 0]);
 
   async function submit() {
     if (isLoading) return;
     setLoading(true);
-    await zkapp.setBoard2(board, 1, 1);
+    await zkapp.setBoard2(board, choice[0], choice[1]);
     pullZkappState();
     setLoading(false);
   }
 
   return (
-    <Layout>
+    <div>
       <Header>Player 2: set map layout</Header>
 
       <Board
@@ -113,15 +114,17 @@ function SetBoard2({ zkapp, pullZkappState }) {
         setBoard={setBoard}
       />
 
+      <SelectBoard choice={choice} setChoice={setChoice} />
       <div style={{ width: rightColumnWidth + 'px' }}>
         <Space h="2.5rem" />
         <div>You must place exactly {CAPY_COUNT} ships.</div>
 
         <Button onClick={submit} disabled={isLoading}>
-          Set layout
+          Submit
         </Button>
       </div>
-    </Layout>
+
+    </div>
   );
 }
 
@@ -139,7 +142,7 @@ function HitBoard({ zkapp, pullZkappState }) {
 
   return (
     <Layout>
-      <Header>Shoot player 1 board</Header>
+      <Header>Player 1 prove that you have or have not been hit</Header>
 
       <Board
         board={board}
@@ -150,7 +153,7 @@ function HitBoard({ zkapp, pullZkappState }) {
         <Space h="2.5rem" />
 
         <Button onClick={submit} disabled={isLoading}>
-          Shoot
+          Prove
         </Button>
       </div>
     </Layout>
@@ -271,6 +274,49 @@ function Board({ board, setBoard }) {
                   setBoard(newBoard);
                 }}
               >{x === 1 ? '🛳' : '🌊'}</button>
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function SelectBoard({ choice, setChoice }) {
+  let cellSize = gridWidth / 9 + 'px';
+
+  return (
+    <table
+      style={{
+        border: thin,
+        borderCollapse: 'collapse'
+      }}
+    >
+      <tbody>
+        {Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)).map((row, i) => (
+          <tr key={i}>
+            {row.map((x, j) => (
+              <td
+                key={j}
+                style={{
+                  width: cellSize,
+                  height: cellSize,
+                  borderRight: thin,
+                  borderBottom: thin,
+                }}
+              > <button
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  textAlign: 'center',
+                  backgroundColor: lightGrey,
+                  border: thin,
+                }}
+                onClick={() => {
+                  setChoice([i, j]);
+                }}
+              >{i === choice[0] && j === choice[1] ? 'X' : '?'}</button>
               </td>
             ))}
           </tr>
