@@ -72,23 +72,23 @@ function SetBoard1({ zkapp, pullZkappState }) {
   }
 
   return (
-    <Layout>
-      <Header>Player 1: set map layout</Header>
+    <div>
+      <Header>Player 1</Header>
 
-      <Board
-        board={board}
-        setBoard={setBoard}
-      />
-
-      <div style={{ width: rightColumnWidth + 'px' }}>
-        <Space h="2.5rem" />
+      <div>
+        <h2>Choose map layout here</h2>
         <div>You must place exactly {CAPY_COUNT} ships.</div>
 
-        <Button onClick={submit} disabled={isLoading}>
-          Set layout
-        </Button>
+        <Board
+          board={board}
+          setBoard={setBoard}
+        />
       </div>
-    </Layout>
+
+      <Button onClick={submit} disabled={isLoading}>
+        Submit
+      </Button>
+    </div>
   );
 }
 
@@ -107,23 +107,28 @@ function SetBoard2({ zkapp, pullZkappState }) {
 
   return (
     <div>
-      <Header>Player 2: set map layout</Header>
+      <Header>Player 2</Header>
 
-      <Board
-        board={board}
-        setBoard={setBoard}
-      />
+      <div style={{ display: 'flex', flexDirection: 'row' }}>
+        <div>
+          <h2>Choose map layout here</h2>
+          <div>You must place exactly {CAPY_COUNT} ships.</div>
 
-      <SelectBoard choice={choice} setChoice={setChoice} />
-      <div style={{ width: rightColumnWidth + 'px' }}>
-        <Space h="2.5rem" />
-        <div>You must place exactly {CAPY_COUNT} ships.</div>
+          <Board
+            board={board}
+            setBoard={setBoard}
+          />
+        </div>
 
-        <Button onClick={submit} disabled={isLoading}>
-          Submit
-        </Button>
+        <div>
+          <h2>Choose where you would like to shoot Player 1 here</h2>
+          <SelectBoard choice={choice} setChoice={setChoice} />
+        </div>
       </div>
 
+      <Button onClick={submit} disabled={isLoading}>
+        Submit
+      </Button>
     </div>
   );
 }
@@ -141,22 +146,21 @@ function HitBoard({ zkapp, pullZkappState }) {
   }
 
   return (
-    <Layout>
-      <Header>Player 1 prove that you have or have not been hit</Header>
+    <div>
+      <Header>Player 1</Header>
 
-      <Board
-        board={board}
-        setBoard={setBoard}
-      />
-
-      <div style={{ width: rightColumnWidth + 'px' }}>
-        <Space h="2.5rem" />
-
-        <Button onClick={submit} disabled={isLoading}>
-          Prove
-        </Button>
+      <div>
+        <h2>Enter your board layout to prove if you have been hit and resolve the match</h2>
+        <Board
+          board={board}
+          setBoard={setBoard}
+        />
       </div>
-    </Layout>
+
+      <Button onClick={submit} disabled={isLoading}>
+        Prove
+      </Button>
+    </div>
   );
 }
 
@@ -316,7 +320,7 @@ function SelectBoard({ choice, setChoice }) {
                 onClick={() => {
                   setChoice([i, j]);
                 }}
-              >{i === choice[0] && j === choice[1] ? 'X' : '?'}</button>
+              >{i === choice[0] && j === choice[1] ? '🔫' : '🌊'}</button>
               </td>
             ))}
           </tr>
