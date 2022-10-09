@@ -33,6 +33,7 @@ function App() {
           <HitBoard {...{
             zkapp, player: parseInt(zkappState.turn),
             board: zkappState.turn === "1" ? board1 : board2,
+            zkappState,
             hits1,
             hits2,
             setHits1,
@@ -81,12 +82,11 @@ function SetBoard1({ zkapp, board, setBoard, pullZkappState }) {
 
   return (
     <div>
-      <Header>{"Player 1's turn"}</Header>
+      <h1>{"Player 1's turn"}</h1>
+      <h2>Place {CAPY_COUNT} capys</h2>
 
       <div>
-        <h2>Player 1</h2>
-        <div>You must place exactly {CAPY_COUNT} capys.</div>
-
+        <h3>Player 1</h3>
         <EditBoard
           board={board}
           setBoard={setBoard}
@@ -119,17 +119,17 @@ function SetBoard2({ zkapp, pullZkappState, board, setBoard, hits1, setHits1 }) 
 
   return (
     <div>
-      <Header>{"Player 2's turn"}</Header>
+      <h1>{"Player 2's turn"}</h1>
+      <h2>Place {CAPY_COUNT} capys and choose where to shoot Player 1</h2>
 
-      <div style={{ display: 'flex', flexDirection: 'row' }}>
+      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', padding: 8 }}>
         <div>
-          <h2>Player 1</h2>
+          <h3>Player 1</h3>
           <SelectBoard choice={choice} setChoice={setChoice} hitsBoard={hits1} />
         </div>
 
         <div>
-          <h2>Player 2</h2>
-          <div>You must place exactly {CAPY_COUNT} capys.</div>
+          <h3>Player 2</h3>
 
           <EditBoard
             board={board}
@@ -145,7 +145,7 @@ function SetBoard2({ zkapp, pullZkappState, board, setBoard, hits1, setHits1 }) 
   );
 }
 
-function HitBoard({ zkapp, pullZkappState, player, board, hits1, hits2, setHits1, setHits2 }) {
+function HitBoard({ zkapp, pullZkappState, zkappState, player, board, hits1, hits2, setHits1, setHits2 }) {
   let [choice, setChoice] = useState([0, 0]);
   let [isLoading, setLoading] = useState(false);
 
@@ -170,24 +170,28 @@ function HitBoard({ zkapp, pullZkappState, player, board, hits1, hits2, setHits1
 
   return (
     <div>
-      <Header>{`Player ${player}'s turn`}</Header>
-      <div style={{ display: 'flex', flexDirection: 'row', alignContent: 'space-around' }}>
+      <h1>{`Player ${player}'s turn`}</h1>
+      <h2>Choose where to shoot Player {player === 1 ? 2 : 0}</h2>
+
+      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', padding: 8 }}>
         <div>
-          <h2>Player 1 {player === 1 ? "(You)" : ""}</h2>
+          <h3>Player 1 {player === 1 ? "(You)" : ""}</h3>
           {
             player === 1 ? <DisplayBoard board={board} hitsBoard={hits1} />
               : <SelectBoard choice={choice} setChoice={setChoice} hitsBoard={hits1} />
           }
+          <div>Confirmed {zkappState.hits1} hits.</div>
         </div>
 
         <div>
-          <h2>Player 2 {player === 2 ? "(You)" : ""}</h2>
+          <h3>Player 2 {player === 2 ? "(You)" : ""}</h3>
           {
             player === 2 ? <DisplayBoard
               board={board}
               hitsBoard={hits2}
             /> : <SelectBoard choice={choice} setChoice={setChoice} hitsBoard={hits2} />
           }
+          <div>Confirmed {zkappState.hits2} hits.</div>
         </div>
       </div>
 
@@ -248,7 +252,7 @@ function DisplayBoard({ board, hitsBoard }) {
                   width: '100%',
                   height: '100%',
                   textAlign: 'center',
-                  backgroundColor: (hitsBoard[i][j] === 1 ? 'maroon' : lightGrey),
+                  backgroundColor: (hitsBoard[i][j] === 1 ? 'red' : lightGrey),
                   border: thin,
                 }}
               >{x === 1 ? '🦫' : '🌊'}</button>
@@ -333,7 +337,7 @@ function SelectBoard({ choice, setChoice, hitsBoard }) {
                   width: '100%',
                   height: '100%',
                   textAlign: 'center',
-                  backgroundColor: (hitsBoard[i][j] === 1 ? 'maroon' : lightGrey),
+                  backgroundColor: (hitsBoard[i][j] === 1 ? 'red' : lightGrey),
                   border: thin,
                 }}
                 onClick={() => {
