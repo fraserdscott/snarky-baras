@@ -1,17 +1,15 @@
-# SnarkyJS Sudoku
+# SnarkyBara
 
-Zero-knowledge Sudoku with SnarkyJS.
+a Zero-knowledge 'Capybara' themed Battleships using SnarkyJS & Mina
 
-To serve the web UI, do the following and navigate to http://localhost:3000 in your browser.
+![captain_bara](./captain-bara3.png)
 
-```sh
-npm i
-npx tsc
-npm run start
-```
+Built during the EthBogota 2022 hackathon, this modern twist on a classic bridges the gap between zk-proofs and colombia native species, the capybara.
 
-If you just want to test the core smart contract logic with node, after `npm i` you can do
+![Title Card](./Snarkybaras.png)
 
-```sh
-npx tsc && node dist/main.js
-```
+A never before seen, potentionally first ever capybara themed web-based game on Mina.
+
+![sleepy capy](./sleepy-capy.png)
+
+As forked from the SnarkyJS Sudoku which can be found [here](https://github.com/mitschabaude/snarkyjs-sudoku)
