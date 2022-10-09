@@ -96,6 +96,7 @@ function SetBoard1({ zkapp, board, setBoard, pullZkappState }) {
       <Button onClick={submit} disabled={isLoading}>
         Submit
       </Button>
+      <div style={{ padding: 12 }}><i>Please wait ~30s for the proof to generate</i></div>
     </div>
   );
 }
@@ -141,6 +142,7 @@ function SetBoard2({ zkapp, pullZkappState, board, setBoard, hits1, setHits1 }) 
       <Button onClick={submit} disabled={isLoading}>
         Submit
       </Button>
+      <div style={{ padding: 12 }}><i>Please wait ~30s for the proof to generate</i></div>
     </div>
   );
 }
@@ -198,6 +200,7 @@ function HitBoard({ zkapp, pullZkappState, zkappState, player, board, hits1, hit
       <Button onClick={submit} disabled={isLoading}>
         Submit
       </Button>
+      <div style={{ padding: 12 }}><i>Please wait ~30s for the proof to generate</i></div>
     </div>
   );
 }
