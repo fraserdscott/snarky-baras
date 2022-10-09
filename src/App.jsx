@@ -120,7 +120,7 @@ function SetBoard2({ zkapp, pullZkappState, board, setBoard, hits1, setHits1 }) 
   return (
     <div>
       <h1>{"Player 2's turn"}</h1>
-      <h2>Place {CAPY_COUNT} capys and choose where to shoot Player 1</h2>
+      <h2>Place {CAPY_COUNT} capys and guess a tile on Player 1{"'"}s board</h2>
 
       <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', padding: 8 }}>
         <div>
@@ -171,7 +171,7 @@ function HitBoard({ zkapp, pullZkappState, zkappState, player, board, hits1, hit
   return (
     <div>
       <h1>{`Player ${player}'s turn`}</h1>
-      <h2>Choose where to shoot Player {player === 1 ? 2 : 0}</h2>
+      <h2>Guess a tile on Player {player === 1 ? 2 : 0}{"'"}s board</h2>
 
       <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', padding: 8 }}>
         <div>
@@ -346,7 +346,7 @@ function SelectBoard({ choice, setChoice, hitsBoard }) {
                 onClick={() => {
                   setChoice([i, j]);
                 }}
-              >{i === choice[0] && j === choice[1] ? '🔫' : '❓'}</button>
+              >{i === choice[0] && j === choice[1] ? '🍪' : '❓'}</button>
               </td>
             ))}
           </tr>
