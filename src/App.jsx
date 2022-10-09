@@ -388,6 +388,7 @@ function Container(props) {
         alignItems: 'stretch',
         justifyContent: 'center',
         padding: '2rem',
+        background: "linear-gradient(#02E365, #56FA0A)"
       }}
       {...props}
     />
