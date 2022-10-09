@@ -98,6 +98,8 @@ class SudokuZkapp extends SmartContract {
 
     let board = boardInstance.value;
 
+    // We need to know if tiles have been hit before, so we know not to increment this counter
+    // Maintain a Board of "hit" positions
     let isNotHit = Bool(true);
     for (let i = 0; i < BOARD_WIDTH; i++) {
       for (let j = 0; j < BOARD_WIDTH; j++) {
@@ -129,6 +131,7 @@ class SudokuZkapp extends SmartContract {
 
     let board = boardInstance.value;
 
+    // Check that hit correpsonde with newHitBoardInstance (all zeros except 1)
     let isNotHit = Bool(true);
     for (let i = 0; i < BOARD_WIDTH; i++) {
       for (let j = 0; j < BOARD_WIDTH; j++) {
@@ -143,6 +146,7 @@ class SudokuZkapp extends SmartContract {
     }
 
     this.hits2.set(Circuit.if(isNotHit, this.hits2.get(), this.hits2.get().add(Field(1))));
+    // TODO: check that hitBoard and newHitBoard only differ by 1
     this.guessX.set(x);
     this.guessY.set(y);
     this.turn.set(Field(1));

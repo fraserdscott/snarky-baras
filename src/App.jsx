@@ -19,17 +19,25 @@ function App() {
   let [zkappState, pullZkappState] = useZkappState(zkapp);
   let [board1, setBoard1] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
   let [board2, setBoard2] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
+  let [hits1, setHits1] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
+  let [hits2, setHits2] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
 
   return (
     <Container>
-      {zkappState ? <ZkappState state={zkappState} /> : null}
       {zkappState ? (
         zkappState.commitment1 === "0" && zkappState.commitment2 === "0" ? (
           <SetBoard1 {...{ zkapp, board: board1, setBoard: setBoard1 }} pullZkappState={pullZkappState} />
         ) : zkappState.commitment1 !== "0" && zkappState.commitment2 === "0" ? (
-          <SetBoard2 {...{ zkapp, board: board2, setBoard: setBoard2 }} pullZkappState={pullZkappState} />
+          <SetBoard2 {...{ zkapp, board: board2, setBoard: setBoard2, hits1, setHits1 }} pullZkappState={pullZkappState} />
         ) : (
-          <HitBoard {...{ zkapp, player: parseInt(zkappState.turn), zkappState, board: zkappState.turn === "1" ? board1 : board2 }} pullZkappState={pullZkappState} />
+          <HitBoard {...{
+            zkapp, player: parseInt(zkappState.turn),
+            board: zkappState.turn === "1" ? board1 : board2,
+            hits1,
+            hits2,
+            setHits1,
+            setHits2
+          }} pullZkappState={pullZkappState} />
         )) : (
         <DeployContract {...{ setZkapp }} />
       )}
@@ -73,11 +81,11 @@ function SetBoard1({ zkapp, board, setBoard, pullZkappState }) {
 
   return (
     <div>
-      <Header>Player 1</Header>
+      <Header>{"Player 1's turn"}</Header>
 
       <div>
-        <h2>Choose board layout</h2>
-        <div>You must place exactly {CAPY_COUNT} ships.</div>
+        <h2>Player 1</h2>
+        <div>You must place exactly {CAPY_COUNT} capys.</div>
 
         <EditBoard
           board={board}
@@ -92,7 +100,7 @@ function SetBoard1({ zkapp, board, setBoard, pullZkappState }) {
   );
 }
 
-function SetBoard2({ zkapp, pullZkappState, board, setBoard }) {
+function SetBoard2({ zkapp, pullZkappState, board, setBoard, hits1, setHits1 }) {
   let [isLoading, setLoading] = useState(false);
   let [choice, setChoice] = useState([0, 0]);
 
@@ -100,28 +108,33 @@ function SetBoard2({ zkapp, pullZkappState, board, setBoard }) {
     if (isLoading) return;
     setLoading(true);
     await zkapp.setBoard2(board, choice[0], choice[1]);
+
+    let newBoard = cloneSudoku(hits1);
+    newBoard[choice[0]][choice[1]] = 1;
+    setHits1(newBoard);
+
     pullZkappState();
     setLoading(false);
   }
 
   return (
     <div>
-      <Header>Player 2</Header>
+      <Header>{"Player 2's turn"}</Header>
 
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <div>
-          <h2>Choose board layout</h2>
-          <div>You must place exactly {CAPY_COUNT} ships.</div>
+          <h2>Player 1</h2>
+          <SelectBoard choice={choice} setChoice={setChoice} hitsBoard={hits1} />
+        </div>
+
+        <div>
+          <h2>Player 2</h2>
+          <div>You must place exactly {CAPY_COUNT} capys.</div>
 
           <EditBoard
             board={board}
             setBoard={setBoard}
           />
-        </div>
-
-        <div>
-          <h2>Choose where you would like to shoot Player 1</h2>
-          <SelectBoard choice={choice} setChoice={setChoice} />
         </div>
       </div>
 
@@ -132,7 +145,7 @@ function SetBoard2({ zkapp, pullZkappState, board, setBoard }) {
   );
 }
 
-function HitBoard({ zkapp, pullZkappState, zkappState, player, board }) {
+function HitBoard({ zkapp, pullZkappState, player, board, hits1, hits2, setHits1, setHits2 }) {
   let [choice, setChoice] = useState([0, 0]);
   let [isLoading, setLoading] = useState(false);
 
@@ -140,30 +153,41 @@ function HitBoard({ zkapp, pullZkappState, zkappState, player, board }) {
     if (isLoading) return;
     setLoading(true);
     await zkapp.isHit(board, player, choice[0], choice[1]);
+
+    if (player === 1) {
+      let newBoard = cloneSudoku(hits2);
+      newBoard[choice[0]][choice[1]] = 1;
+      setHits2(newBoard);
+    } else {
+      let newBoard = cloneSudoku(hits1);
+      newBoard[choice[0]][choice[1]] = 1;
+      setHits1(newBoard);
+    }
+
     pullZkappState();
     setLoading(false);
   }
 
   return (
     <div>
-      <Header>Player {player === 1 ? 2 : 1}</Header>
-
-      <div>Player {player === 1 ? 2 : 1} just shot at ({zkappState.guessX}, {zkappState.guessY})</div>
+      <Header>{`Player ${player}'s turn`}</Header>
       <div style={{ display: 'flex', flexDirection: 'row', alignContent: 'space-around' }}>
         <div>
           <h2>Player 1 {player === 1 ? "(You)" : ""}</h2>
           {
-            player === 2 ? <SelectBoard choice={choice} setChoice={setChoice} /> : <DisplayBoard
-              board={board} guessX={zkappState.guessX} guessY={zkappState.guessY}
-            />
+            player === 1 ? <DisplayBoard board={board} hitsBoard={hits1} />
+              : <SelectBoard choice={choice} setChoice={setChoice} hitsBoard={hits1} />
           }
         </div>
 
         <div>
           <h2>Player 2 {player === 2 ? "(You)" : ""}</h2>
-          {player === 1 ? <SelectBoard choice={choice} setChoice={setChoice} /> : <DisplayBoard
-            board={board} guessX={zkappState.guessX} guessY={zkappState.guessY}
-          />}
+          {
+            player === 2 ? <DisplayBoard
+              board={board}
+              hitsBoard={hits2}
+            /> : <SelectBoard choice={choice} setChoice={setChoice} hitsBoard={hits2} />
+          }
         </div>
       </div>
 
@@ -187,22 +211,6 @@ function useZkappState(zkapp) {
   return [state, pullZkappState];
 }
 
-function ZkappState({ state = {} }) {
-  let { hits1 = '', hits2 = '' } = state;
-  return (
-    <div
-      style={{
-        backgroundColor: lightGrey,
-        border: thin,
-        padding: '8px',
-      }}
-    >
-      <div>Player 1 has been hit {hits1} times.</div>
-      <div>Player 2 has been hit {hits2} times.</div>
-    </div>
-  );
-}
-
 // pure UI components
 
 function Header({ children }) {
@@ -213,7 +221,7 @@ function Header({ children }) {
   );
 }
 
-function DisplayBoard({ board, guessX, guessY }) {
+function DisplayBoard({ board, hitsBoard }) {
   let cellSize = gridWidth / 9 + 'px';
 
   return (
@@ -240,10 +248,10 @@ function DisplayBoard({ board, guessX, guessY }) {
                   width: '100%',
                   height: '100%',
                   textAlign: 'center',
-                  backgroundColor: (i === parseInt(guessX) && j === parseInt(guessY) ? 'red' : lightGrey),
+                  backgroundColor: (hitsBoard[i][j] === 1 ? 'maroon' : lightGrey),
                   border: thin,
                 }}
-              >{x === 1 ? '🛳' : '🌊'}</button>
+              >{x === 1 ? '🦫' : '🌊'}</button>
               </td>
             ))}
           </tr>
@@ -288,7 +296,7 @@ function EditBoard({ board, setBoard }) {
                   newBoard[i][j] = x === 0 ? 1 : 0;
                   setBoard(newBoard);
                 }}
-              >{x === 1 ? '🛳' : '🌊'}</button>
+              >{x === 1 ? '🦫' : '🌊'}</button>
               </td>
             ))}
           </tr>
@@ -298,7 +306,7 @@ function EditBoard({ board, setBoard }) {
   );
 }
 
-function SelectBoard({ choice, setChoice }) {
+function SelectBoard({ choice, setChoice, hitsBoard }) {
   let cellSize = gridWidth / 9 + 'px';
 
   return (
@@ -325,7 +333,7 @@ function SelectBoard({ choice, setChoice }) {
                   width: '100%',
                   height: '100%',
                   textAlign: 'center',
-                  backgroundColor: lightGrey,
+                  backgroundColor: (hitsBoard[i][j] === 1 ? 'maroon' : lightGrey),
                   border: thin,
                 }}
                 onClick={() => {
@@ -337,7 +345,7 @@ function SelectBoard({ choice, setChoice }) {
           </tr>
         ))}
       </tbody>
-    </table>
+    </table >
   );
 }
 
