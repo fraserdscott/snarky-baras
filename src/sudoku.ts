@@ -49,7 +49,6 @@ class SudokuZkapp extends SmartContract {
 
   @state(Field) turn = State<Field>();
 
-
   @method setBoard1(boardInstance: Board) {
     this.commitment1.assertEquals(Field(0));
     this.commitment2.assertEquals(Field(0));
@@ -112,6 +111,7 @@ class SudokuZkapp extends SmartContract {
       }
     }
 
+    // make hits a board, or commitment to a board
     this.hits1.set(Circuit.if(isNotHit, this.hits1.get(), this.hits1.get().add(Field(1))));
     this.guessX.set(x);
     this.guessY.set(y);

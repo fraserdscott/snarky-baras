@@ -146,6 +146,8 @@ function HitBoard({ zkapp, pullZkappState, zkappState, player, board }) {
 
   return (
     <div>
+      <Header>Player {player === 1 ? 2 : 1}</Header>
+
       <div>Player {player === 1 ? 2 : 1} just shot at ({zkappState.guessX}, {zkappState.guessY})</div>
       <div style={{ display: 'flex', flexDirection: 'row', alignContent: 'space-around' }}>
         <div>
@@ -197,7 +199,7 @@ function ZkappState({ state = {} }) {
     >
       <div>Player 1 has been hit {hits1} times.</div>
       <div>Player 2 has been hit {hits2} times.</div>
-    </div >
+    </div>
   );
 }
 
