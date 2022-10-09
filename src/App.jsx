@@ -9,7 +9,6 @@ let darkGrey = '#999999';
 let lightGrey = '#f6f6f6';
 let thin = `${grey} solid 1px`;
 let gridWidth = 450;
-let rightColumnWidth = 275;
 
 let Sudoku; // this will hold the dynamically imported './sudoku-zkapp.ts'
 
@@ -28,7 +27,7 @@ function App() {
         ) : zkappState.commitment1 !== "0" && zkappState.commitment2 === "0" ? (
           <SetBoard2 {...{ zkapp }} pullZkappState={pullZkappState} />
         ) : (
-          <HitBoard {...{ zkapp }} pullZkappState={pullZkappState} />
+          <HitBoard {...{ zkapp, player: parseInt(zkappState.turn) }} pullZkappState={pullZkappState} />
         )) : (
         <DeployContract {...{ setZkapp }} />
       )}
@@ -133,28 +132,36 @@ function SetBoard2({ zkapp, pullZkappState }) {
   );
 }
 
-function HitBoard({ zkapp, pullZkappState }) {
+function HitBoard({ zkapp, pullZkappState, player }) {
   let [board, setBoard] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
+  let [choice, setChoice] = useState([0, 0]);
   let [isLoading, setLoading] = useState(false);
 
   async function submit() {
     if (isLoading) return;
     setLoading(true);
-    await zkapp.isHit(board);
+    await zkapp.isHit(board, player, choice[0], choice[1]);
     pullZkappState();
     setLoading(false);
   }
 
   return (
     <div>
-      <Header>Player 1</Header>
+      <Header>Player {player}</Header>
 
-      <div>
-        <h2>Enter your board layout to prove if you have been hit and resolve the match</h2>
-        <Board
-          board={board}
-          setBoard={setBoard}
-        />
+      <div style={{ display: 'flex', flexDirection: 'row' }}>
+        <div>
+          <h2>Enter your board layout to prove if you have been hit</h2>
+          <Board
+            board={board}
+            setBoard={setBoard}
+          />
+        </div>
+
+        <div>
+          <h2>Choose where you would like to shoot Player 2 here</h2>
+          <SelectBoard choice={choice} setChoice={setChoice} />
+        </div>
       </div>
 
       <Button onClick={submit} disabled={isLoading}>
@@ -178,7 +185,7 @@ function useZkappState(zkapp) {
 }
 
 function ZkappState({ state = {} }) {
-  let { commitment1 = '', commitment2 = '', winner = '' } = state;
+  let { commitment1 = '', commitment2 = '', hits1 = '', hits2 = '' } = state;
   return (
     <div
       style={{
@@ -216,16 +223,29 @@ function ZkappState({ state = {} }) {
       </pre>
       <Space h=".5rem" />
       <pre style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <b>winner</b>
+        <b>hits1</b>
         <span
-          title={winner}
+          title={hits1}
           style={{
             width: '100px',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}
         >
-          {winner}
+          {hits1}
+        </span>
+      </pre>
+      <pre style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <b>hits2</b>
+        <span
+          title={hits2}
+          style={{
+            width: '100px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {hits2}
         </span>
       </pre>
     </div>

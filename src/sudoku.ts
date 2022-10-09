@@ -21,7 +21,7 @@ export { deploy };
 
 await isReady;
 
-export const BOARD_WIDTH = 7;
+export const BOARD_WIDTH = 4;
 export const CAPY_COUNT = 3;
 
 class Board extends CircuitValue {
@@ -41,10 +41,14 @@ class SudokuZkapp extends SmartContract {
   @state(Field) commitment1 = State<Field>();
   @state(Field) commitment2 = State<Field>();
 
+  @state(Field) hits1 = State<Field>();
+  @state(Field) hits2 = State<Field>();
+
   @state(Field) guessX = State<Field>();
   @state(Field) guessY = State<Field>();
 
-  @state(Field) winner = State<Field>();
+  @state(Field) turn = State<Field>();
+
 
   @method setBoard1(boardInstance: Board) {
     this.commitment1.assertEquals(Field(0));
@@ -61,10 +65,12 @@ class SudokuZkapp extends SmartContract {
     sum.assertEquals(CAPY_COUNT);
 
     this.commitment1.set(boardInstance.hash());
+    this.turn.set(Field(2));
   }
 
   @method setBoard2(boardInstance: Board, x: Field, y: Field) {
-    this.commitment2.assertEquals(Field(0)); // TODO: add commitment1 check
+    this.turn.assertEquals(Field(2));
+    this.commitment2.assertEquals(Field(0));
 
     let board = boardInstance.value;
 
@@ -79,12 +85,17 @@ class SudokuZkapp extends SmartContract {
     this.commitment2.set(boardInstance.hash());
     this.guessX.set(x);
     this.guessY.set(y);
+    this.turn.set(Field(1));
   }
 
-  @method isHit(boardInstance: Board) {
+  @method isHit1(boardInstance: Board, x: Field, y: Field) {
+    this.turn.assertEquals(Field(1)); // TODO check that both commitments have been made
+
     this.commitment1.assertEquals(boardInstance.hash());
+
     this.guessX.assertEquals(this.guessX.get());
     this.guessY.assertEquals(this.guessY.get());
+    this.hits1.assertEquals(this.hits1.get());
 
     let board = boardInstance.value;
 
@@ -101,7 +112,40 @@ class SudokuZkapp extends SmartContract {
       }
     }
 
-    this.winner.set(Circuit.if(isNotHit, Field(1), Field(2)));
+    this.hits1.set(Circuit.if(isNotHit, this.hits1.get(), this.hits1.get().add(Field(1))));
+    this.guessX.set(x);
+    this.guessY.set(y);
+    this.turn.set(Field(2));
+  }
+
+  @method isHit2(boardInstance: Board, x: Field, y: Field) {
+    this.turn.assertEquals(Field(2)); // TODO check that both commitments have been made
+
+    this.commitment2.assertEquals(boardInstance.hash());
+
+    this.guessX.assertEquals(this.guessX.get());
+    this.guessY.assertEquals(this.guessY.get());
+    this.hits2.assertEquals(this.hits2.get());
+
+    let board = boardInstance.value;
+
+    let isNotHit = Bool(true);
+    for (let i = 0; i < BOARD_WIDTH; i++) {
+      for (let j = 0; j < BOARD_WIDTH; j++) {
+        const guessXLocal = this.guessX.get();
+        const guessYLocal = this.guessY.get();
+
+        const isGuess = guessXLocal.equals(i).and(guessYLocal.equals(i));
+        const isHit = isGuess.and(board[i][j].equals(1));
+
+        isNotHit = isHit.not().and(isNotHit);
+      }
+    }
+
+    this.hits2.set(Circuit.if(isNotHit, this.hits2.get(), this.hits2.get().add(Field(1))));
+    this.guessX.set(x);
+    this.guessY.set(y);
+    this.turn.set(Field(1));
   }
 }
 
@@ -112,9 +156,9 @@ let feePayer = Local.testAccounts[0].privateKey;
 
 type BoardInterface = {
   setBoard1(board: number[][]): Promise<void>;
-  setBoard2(board: number[][], guessX: number, guessY: number): Promise<void>;
-  isHit(board: number[][]): Promise<void>;
-  getState(): { commitment1: string; commitment2: string, winner: string };
+  setBoard2(board: number[][], x: number, y: number): Promise<void>;
+  isHit(board: number[][], player: number, x: number, y: number): Promise<void>;
+  getState(): { commitment1: string; commitment2: string, hits1: string, hits2: string, turn: string };
 };
 let isDeploying = null as null | BoardInterface;
 
@@ -134,8 +178,8 @@ async function deploy() {
     setBoard2(board: number[][], guessX: number, guessY: number) {
       return setBoard2(zkappAddress, board, guessX, guessY);
     },
-    isHit(board: number[][]) {
-      return isHit(zkappAddress, board);
+    isHit(board: number[][], player: number, x: number, y: number) {
+      return isHit(zkappAddress, board, player, x, y);
     },
     getState() {
       return getState(zkappAddress);
@@ -175,13 +219,13 @@ async function setBoard1(
 async function setBoard2(
   zkappAddress: PublicKey,
   board: number[][],
-  guessX: number,
-  guessY: number
+  x: number,
+  y: number
 ) {
   let zkapp = new SudokuZkapp(zkappAddress);
   try {
     let tx = await Mina.transaction(feePayer, () => {
-      zkapp.setBoard2(new Board(board), Field(guessX), Field(guessY));
+      zkapp.setBoard2(new Board(board), Field(x), Field(y));
     });
     tic('prove');
     await tx.prove();
@@ -195,12 +239,15 @@ async function setBoard2(
 
 async function isHit(
   zkappAddress: PublicKey,
-  board: number[][]
+  board: number[][],
+  player: number,
+  x: number,
+  y: number
 ) {
   let zkapp = new SudokuZkapp(zkappAddress);
   try {
     let tx = await Mina.transaction(feePayer, () => {
-      zkapp.isHit(new Board(board));
+      player === 1 ? zkapp.isHit1(new Board(board), Field(x), Field(y)) : zkapp.isHit2(new Board(board), Field(x), Field(y));
     });
     tic('prove');
     await tx.prove();
@@ -216,9 +263,11 @@ function getState(zkappAddress: PublicKey) {
   let zkapp = new SudokuZkapp(zkappAddress);
   let commitment1 = fieldToHex(zkapp.commitment1.get());
   let commitment2 = fieldToHex(zkapp.commitment2.get());
-  let winner = zkapp.winner.get().toString();
+  let hits1 = zkapp.hits1.get().toString();
+  let hits2 = zkapp.hits2.get().toString();
+  let turn = zkapp.turn.get().toString();
 
-  return { commitment1, commitment2, winner };
+  return { commitment1, commitment2, hits1, hits2, turn };
 }
 
 function fieldToHex(field: Field) {
