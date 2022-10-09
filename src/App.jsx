@@ -65,6 +65,7 @@ function DeployContract({ setZkapp }) {
       <Button onClick={deploy} disabled={isLoading}>
         Deploy
       </Button>
+      <div style={{ padding: 12 }}><i>Please wait ~30s for the proof to generate</i></div>
     </Layout>
   );
 }
