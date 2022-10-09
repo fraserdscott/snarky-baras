@@ -11,7 +11,9 @@ import {
   State,
   isReady,
   Poseidon,
-  AccountUpdate
+  AccountUpdate,
+  Bool,
+  Circuit
 } from 'snarkyjs';
 import { tic, toc } from './tictoc';
 
@@ -20,7 +22,7 @@ export { deploy };
 await isReady;
 
 export const BOARD_WIDTH = 7;
-export const CAPY_COUNT = 10;
+export const CAPY_COUNT = 3;
 
 class Board extends CircuitValue {
   @matrixProp(Field, BOARD_WIDTH, BOARD_WIDTH) value: Field[][];
@@ -39,7 +41,13 @@ class SudokuZkapp extends SmartContract {
   @state(Field) commitment1 = State<Field>();
   @state(Field) commitment2 = State<Field>();
 
+  @state(Field) guessX = State<Field>();
+  @state(Field) guessY = State<Field>();
+
+  @state(Field) winner = State<Field>();
+
   @method setBoard1(boardInstance: Board) {
+    this.commitment1.assertEquals(Field(0));
     this.commitment2.assertEquals(Field(0));
 
     let board = boardInstance.value;
@@ -55,8 +63,8 @@ class SudokuZkapp extends SmartContract {
     this.commitment1.set(boardInstance.hash());
   }
 
-  @method setBoard2(boardInstance: Board) {
-    this.commitment2.assertEquals(Field(0));
+  @method setBoard2(boardInstance: Board, x: Field, y: Field) {
+    this.commitment2.assertEquals(Field(0)); // add a check here
 
     let board = boardInstance.value;
 
@@ -69,6 +77,33 @@ class SudokuZkapp extends SmartContract {
     sum.assertEquals(CAPY_COUNT);
 
     this.commitment2.set(boardInstance.hash());
+    this.guessX.set(x);
+    this.guessY.set(y);
+  }
+
+  // If the guess is in one of player 1's filled squares, Player 2 is winner.
+  // TODO: Allow player 2 to choose guess
+  @method isHit(boardInstance: Board) {
+    this.commitment1.assertEquals(boardInstance.hash());
+    this.guessX.assertEquals(this.guessX.get());
+    this.guessY.assertEquals(this.guessY.get());
+
+    let board = boardInstance.value;
+
+    let isNotHit = Bool(true);
+    for (let i = 0; i < BOARD_WIDTH; i++) {
+      for (let j = 0; j < BOARD_WIDTH; j++) {
+        const guessXLocal = this.guessX.get();
+        const guessYLocal = this.guessY.get();
+
+        const isGuess = guessXLocal.equals(i).and(guessYLocal.equals(i));
+        const isHit = isGuess.and(board[i][j].equals(1));
+
+        isNotHit = isHit.not().and(isNotHit);
+      }
+    }
+
+    this.winner.set(Circuit.if(isNotHit, Field(1), Field(2)));
   }
 }
 
@@ -79,7 +114,8 @@ let feePayer = Local.testAccounts[0].privateKey;
 
 type BoardInterface = {
   setBoard(board: number[][]): Promise<void>;
-  getState(): { commitment1: string; commitment2: string };
+  isHit(board: number[][]): Promise<void>;
+  getState(): { commitment1: string; commitment2: string, winner: string };
 };
 let isDeploying = null as null | BoardInterface;
 
@@ -95,6 +131,9 @@ async function deploy() {
   let zkappInterface = {
     setBoard(board: number[][], player: number) {
       return setBoard(zkappAddress, board, player);
+    },
+    isHit(board: number[][]) {
+      return isHit(zkappAddress, board);
     },
     getState() {
       return getState(zkappAddress);
@@ -114,13 +153,32 @@ async function deploy() {
 
 async function setBoard(
   zkappAddress: PublicKey,
-  sudoku: number[][],
+  board: number[][],
   player: number
 ) {
   let zkapp = new SudokuZkapp(zkappAddress);
   try {
     let tx = await Mina.transaction(feePayer, () => {
-      player === 1 ? zkapp.setBoard1(new Board(sudoku)) : zkapp.setBoard2(new Board(sudoku));
+      player === 1 ? zkapp.setBoard1(new Board(board)) : zkapp.setBoard2(new Board(board), Field(1), Field(1));
+    });
+    tic('prove');
+    await tx.prove();
+    toc();
+    await tx.send().wait();
+  } catch (err) {
+    console.log('Solution rejected!');
+    console.error(err);
+  }
+}
+
+async function isHit(
+  zkappAddress: PublicKey,
+  board: number[][]
+) {
+  let zkapp = new SudokuZkapp(zkappAddress);
+  try {
+    let tx = await Mina.transaction(feePayer, () => {
+      zkapp.isHit(new Board(board));
     });
     tic('prove');
     await tx.prove();
@@ -136,8 +194,9 @@ function getState(zkappAddress: PublicKey) {
   let zkapp = new SudokuZkapp(zkappAddress);
   let commitment1 = fieldToHex(zkapp.commitment1.get());
   let commitment2 = fieldToHex(zkapp.commitment2.get());
+  let winner = zkapp.winner.get().toString();
 
-  return { commitment1, commitment2 };
+  return { commitment1, commitment2, winner };
 }
 
 function fieldToHex(field: Field) {

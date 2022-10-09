@@ -17,25 +17,26 @@ render(<App />, document.querySelector('#root'));
 
 function App() {
   let [zkapp, setZkapp] = useState();
+  let [zkappState, pullZkappState] = useZkappState(zkapp);
 
-  let [view, setView] = useState(1);
-  let goForward = () => setView(2);
-  let goForwarder = () => setView(3);
-  let goBack = () => setView(1);
   return (
     <Container>
-      {view === 1 ? (
-        <DeployContract {...{ setZkapp, goForward }} />
-      ) : view === 2 ? (
-        <SetBoard {...{ zkapp, goBack, player: 1, goForwarder }} />
-      ) : (
-        <SetBoard {...{ zkapp, goBack, player: 2, goForwarder }} />
+      <ZkappState state={zkappState} />
+      {zkappState ? (
+        zkappState.commitment1 === "0" && zkappState.commitment2 === "0" ? (
+          <SetBoard {...{ zkapp, player: 1 }} pullZkappState={pullZkappState} />
+        ) : zkappState.commitment1 !== "0" && zkappState.commitment2 === "0" ? (
+          <SetBoard {...{ zkapp, player: 2 }} pullZkappState={pullZkappState} />
+        ) : (
+          <HitBoard {...{ zkapp }} pullZkappState={pullZkappState} />
+        )) : (
+        <DeployContract {...{ setZkapp }} />
       )}
     </Container>
   );
 }
 
-function DeployContract({ setZkapp, goForward }) {
+function DeployContract({ setZkapp }) {
   let [isLoading, setLoading] = useState(false);
 
   async function deploy() {
@@ -45,7 +46,6 @@ function DeployContract({ setZkapp, goForward }) {
     let zkapp = await Sudoku.deploy();
     setLoading(false);
     setZkapp(zkapp);
-    goForward();
   }
 
   return (
@@ -59,9 +59,8 @@ function DeployContract({ setZkapp, goForward }) {
   );
 }
 
-function SetBoard({ zkapp, goBack, goForwarder, player }) {
+function SetBoard({ zkapp, player, pullZkappState }) {
   let [board, setBoard] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
-  let [zkappState, pullZkappState] = useZkappState(zkapp);
   let [isLoading, setLoading] = useState(false);
 
   async function submit() {
@@ -70,12 +69,11 @@ function SetBoard({ zkapp, goBack, goForwarder, player }) {
     await zkapp.setBoard(board, player);
     pullZkappState();
     setLoading(false);
-    goForwarder();
   }
 
   return (
     <Layout>
-      <Header goBack={goBack}>Player {player}: set map layout</Header>
+      <Header>Player {player}: set map layout</Header>
 
       <Board
         board={board}
@@ -83,15 +81,43 @@ function SetBoard({ zkapp, goBack, goForwarder, player }) {
       />
 
       <div style={{ width: rightColumnWidth + 'px' }}>
-        <p>Zkapp state:</p>
-        <Space h=".5rem" />
-
-        <ZkappState state={zkappState} />
         <Space h="2.5rem" />
         <div>You must place exactly {CAPY_COUNT} ships.</div>
 
         <Button onClick={submit} disabled={isLoading}>
           Set layout
+        </Button>
+      </div>
+    </Layout>
+  );
+}
+
+function HitBoard({ zkapp, pullZkappState }) {
+  let [board, setBoard] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
+  let [isLoading, setLoading] = useState(false);
+
+  async function submit() {
+    if (isLoading) return;
+    setLoading(true);
+    await zkapp.isHit(board);
+    pullZkappState();
+    setLoading(false);
+  }
+
+  return (
+    <Layout>
+      <Header>Shoot player 1 board</Header>
+
+      <Board
+        board={board}
+        setBoard={setBoard}
+      />
+
+      <div style={{ width: rightColumnWidth + 'px' }}>
+        <Space h="2.5rem" />
+
+        <Button onClick={submit} disabled={isLoading}>
+          Shoot
         </Button>
       </div>
     </Layout>
@@ -112,7 +138,7 @@ function useZkappState(zkapp) {
 }
 
 function ZkappState({ state = {} }) {
-  let { commitment1 = '', commitment2 = '' } = state;
+  let { commitment1 = '', commitment2 = '', winner = '' } = state;
   return (
     <div
       style={{
@@ -148,31 +174,30 @@ function ZkappState({ state = {} }) {
           {commitment2}
         </span>
       </pre>
+      <Space h=".5rem" />
+      <pre style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <b>winner</b>
+        <span
+          title={winner}
+          style={{
+            width: '100px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {winner}
+        </span>
+      </pre>
     </div>
   );
 }
 
 // pure UI components
 
-function Header({ goBack, children }) {
+function Header({ children }) {
   return (
     <div style={{ position: 'relative' }}>
       <h1 style={{ fontSize: '36px', textAlign: 'center' }}>{children}</h1>
-      {goBack && (
-        <div
-          onClick={goBack}
-          title="Back to step 1"
-          style={{
-            position: 'absolute',
-            cursor: 'pointer',
-            left: '25px',
-            top: 0,
-            fontSize: '40px',
-          }}
-        >
-          👈
-        </div>
-      )}
     </div>
   );
 }
