@@ -138,7 +138,7 @@ class SudokuZkapp extends SmartContract {
         const guessXLocal = this.guessX.get();
         const guessYLocal = this.guessY.get();
 
-        const isGuess = guessXLocal.equals(i).and(guessYLocal.equals(i));
+        const isGuess = guessXLocal.equals(i).and(guessYLocal.equals(j));
         const isHit = isGuess.and(board[i][j].equals(1));
 
         isNotHit = isHit.not().and(isNotHit);
