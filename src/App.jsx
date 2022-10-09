@@ -254,6 +254,7 @@ function DisplayBoard({ board, hitsBoard }) {
                   textAlign: 'center',
                   backgroundColor: (hitsBoard[i][j] === 1 ? 'red' : lightGrey),
                   border: thin,
+                  fontSize: 25
                 }}
               >{x === 1 ? '🦫' : '🌊'}</button>
               </td>
@@ -294,6 +295,7 @@ function EditBoard({ board, setBoard }) {
                   textAlign: 'center',
                   backgroundColor: lightGrey,
                   border: thin,
+                  fontSize: 25
                 }}
                 onClick={() => {
                   let newBoard = cloneSudoku(board);
@@ -306,7 +308,7 @@ function EditBoard({ board, setBoard }) {
           </tr>
         ))}
       </tbody>
-    </table>
+    </table >
   );
 }
 
@@ -339,6 +341,7 @@ function SelectBoard({ choice, setChoice, hitsBoard }) {
                   textAlign: 'center',
                   backgroundColor: (hitsBoard[i][j] === 1 ? 'red' : lightGrey),
                   border: thin,
+                  fontSize: 25
                 }}
                 onClick={() => {
                   setChoice([i, j]);
