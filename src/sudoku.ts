@@ -64,7 +64,7 @@ class SudokuZkapp extends SmartContract {
   }
 
   @method setBoard2(boardInstance: Board, x: Field, y: Field) {
-    this.commitment2.assertEquals(Field(0)); // add a check here
+    this.commitment2.assertEquals(Field(0)); // TODO: add commitment1 check
 
     let board = boardInstance.value;
 
@@ -81,7 +81,6 @@ class SudokuZkapp extends SmartContract {
     this.guessY.set(y);
   }
 
-  // TODO: Allow player 2 to choose guess
   @method isHit(boardInstance: Board) {
     this.commitment1.assertEquals(boardInstance.hash());
     this.guessX.assertEquals(this.guessX.get());
