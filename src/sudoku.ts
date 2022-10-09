@@ -158,7 +158,7 @@ type BoardInterface = {
   setBoard1(board: number[][]): Promise<void>;
   setBoard2(board: number[][], x: number, y: number): Promise<void>;
   isHit(board: number[][], player: number, x: number, y: number): Promise<void>;
-  getState(): { commitment1: string; commitment2: string, hits1: string, hits2: string, turn: string };
+  getState(): { commitment1: string; commitment2: string, hits1: string, hits2: string, turn: string, guessX: string, guessY: string };
 };
 let isDeploying = null as null | BoardInterface;
 
@@ -266,8 +266,10 @@ function getState(zkappAddress: PublicKey) {
   let hits1 = zkapp.hits1.get().toString();
   let hits2 = zkapp.hits2.get().toString();
   let turn = zkapp.turn.get().toString();
+  let guessX = zkapp.guessX.get().toString();
+  let guessY = zkapp.guessY.get().toString();
 
-  return { commitment1, commitment2, hits1, hits2, turn };
+  return { commitment1, commitment2, hits1, hits2, turn, guessX, guessY };
 }
 
 function fieldToHex(field: Field) {

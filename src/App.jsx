@@ -17,17 +17,19 @@ render(<App />, document.querySelector('#root'));
 function App() {
   let [zkapp, setZkapp] = useState();
   let [zkappState, pullZkappState] = useZkappState(zkapp);
+  let [board1, setBoard1] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
+  let [board2, setBoard2] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
 
   return (
     <Container>
-      <ZkappState state={zkappState} />
+      {zkappState ? <ZkappState state={zkappState} /> : null}
       {zkappState ? (
         zkappState.commitment1 === "0" && zkappState.commitment2 === "0" ? (
-          <SetBoard1 {...{ zkapp }} pullZkappState={pullZkappState} />
+          <SetBoard1 {...{ zkapp, board: board1, setBoard: setBoard1 }} pullZkappState={pullZkappState} />
         ) : zkappState.commitment1 !== "0" && zkappState.commitment2 === "0" ? (
-          <SetBoard2 {...{ zkapp }} pullZkappState={pullZkappState} />
+          <SetBoard2 {...{ zkapp, board: board2, setBoard: setBoard2 }} pullZkappState={pullZkappState} />
         ) : (
-          <HitBoard {...{ zkapp, player: parseInt(zkappState.turn) }} pullZkappState={pullZkappState} />
+          <HitBoard {...{ zkapp, player: parseInt(zkappState.turn), zkappState, board: zkappState.turn === "1" ? board1 : board2 }} pullZkappState={pullZkappState} />
         )) : (
         <DeployContract {...{ setZkapp }} />
       )}
@@ -49,7 +51,7 @@ function DeployContract({ setZkapp }) {
 
   return (
     <Layout>
-      <Header>Step 1. Deploy the contract</Header>
+      <Header>Step 1: Deploy the contract</Header>
 
       <Button onClick={deploy} disabled={isLoading}>
         Deploy
@@ -58,8 +60,7 @@ function DeployContract({ setZkapp }) {
   );
 }
 
-function SetBoard1({ zkapp, pullZkappState }) {
-  let [board, setBoard] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
+function SetBoard1({ zkapp, board, setBoard, pullZkappState }) {
   let [isLoading, setLoading] = useState(false);
 
   async function submit() {
@@ -75,10 +76,10 @@ function SetBoard1({ zkapp, pullZkappState }) {
       <Header>Player 1</Header>
 
       <div>
-        <h2>Choose map layout here</h2>
+        <h2>Choose board layout</h2>
         <div>You must place exactly {CAPY_COUNT} ships.</div>
 
-        <Board
+        <EditBoard
           board={board}
           setBoard={setBoard}
         />
@@ -91,8 +92,7 @@ function SetBoard1({ zkapp, pullZkappState }) {
   );
 }
 
-function SetBoard2({ zkapp, pullZkappState }) {
-  let [board, setBoard] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
+function SetBoard2({ zkapp, pullZkappState, board, setBoard }) {
   let [isLoading, setLoading] = useState(false);
   let [choice, setChoice] = useState([0, 0]);
 
@@ -110,17 +110,17 @@ function SetBoard2({ zkapp, pullZkappState }) {
 
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <div>
-          <h2>Choose map layout here</h2>
+          <h2>Choose board layout</h2>
           <div>You must place exactly {CAPY_COUNT} ships.</div>
 
-          <Board
+          <EditBoard
             board={board}
             setBoard={setBoard}
           />
         </div>
 
         <div>
-          <h2>Choose where you would like to shoot Player 1 here</h2>
+          <h2>Choose where you would like to shoot Player 1</h2>
           <SelectBoard choice={choice} setChoice={setChoice} />
         </div>
       </div>
@@ -132,8 +132,7 @@ function SetBoard2({ zkapp, pullZkappState }) {
   );
 }
 
-function HitBoard({ zkapp, pullZkappState, player }) {
-  let [board, setBoard] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
+function HitBoard({ zkapp, pullZkappState, zkappState, player, board }) {
   let [choice, setChoice] = useState([0, 0]);
   let [isLoading, setLoading] = useState(false);
 
@@ -147,25 +146,27 @@ function HitBoard({ zkapp, pullZkappState, player }) {
 
   return (
     <div>
-      <Header>Player {player}</Header>
-
-      <div style={{ display: 'flex', flexDirection: 'row' }}>
+      <div>Player {player === 1 ? 2 : 1} just shot at ({zkappState.guessX}, {zkappState.guessY})</div>
+      <div style={{ display: 'flex', flexDirection: 'row', alignContent: 'space-around' }}>
         <div>
-          <h2>Enter your board layout to prove if you have been hit</h2>
-          <Board
-            board={board}
-            setBoard={setBoard}
-          />
+          <h2>Player 1 {player === 1 ? "(You)" : ""}</h2>
+          {
+            player === 2 ? <SelectBoard choice={choice} setChoice={setChoice} /> : <DisplayBoard
+              board={board} guessX={zkappState.guessX} guessY={zkappState.guessY}
+            />
+          }
         </div>
 
         <div>
-          <h2>Choose where you would like to shoot Player 2 here</h2>
-          <SelectBoard choice={choice} setChoice={setChoice} />
+          <h2>Player 2 {player === 2 ? "(You)" : ""}</h2>
+          {player === 1 ? <SelectBoard choice={choice} setChoice={setChoice} /> : <DisplayBoard
+            board={board} guessX={zkappState.guessX} guessY={zkappState.guessY}
+          />}
         </div>
       </div>
 
       <Button onClick={submit} disabled={isLoading}>
-        Prove
+        Submit
       </Button>
     </div>
   );
@@ -185,7 +186,7 @@ function useZkappState(zkapp) {
 }
 
 function ZkappState({ state = {} }) {
-  let { commitment1 = '', commitment2 = '', hits1 = '', hits2 = '' } = state;
+  let { hits1 = '', hits2 = '' } = state;
   return (
     <div
       style={{
@@ -194,61 +195,9 @@ function ZkappState({ state = {} }) {
         padding: '8px',
       }}
     >
-      <pre style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <b>commitment1</b>
-        <span
-          title={commitment1}
-          style={{
-            width: '100px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {commitment1}
-        </span>
-      </pre>
-      <Space h=".5rem" />
-      <pre style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <b>commitment2</b>
-        <span
-          title={commitment2}
-          style={{
-            width: '100px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {commitment2}
-        </span>
-      </pre>
-      <Space h=".5rem" />
-      <pre style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <b>hits1</b>
-        <span
-          title={hits1}
-          style={{
-            width: '100px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {hits1}
-        </span>
-      </pre>
-      <pre style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <b>hits2</b>
-        <span
-          title={hits2}
-          style={{
-            width: '100px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {hits2}
-        </span>
-      </pre>
-    </div>
+      <div>Player 1 has been hit {hits1} times.</div>
+      <div>Player 2 has been hit {hits2} times.</div>
+    </div >
   );
 }
 
@@ -262,7 +211,47 @@ function Header({ children }) {
   );
 }
 
-function Board({ board, setBoard }) {
+function DisplayBoard({ board, guessX, guessY }) {
+  let cellSize = gridWidth / 9 + 'px';
+
+  return (
+    <table
+      style={{
+        border: thin,
+        borderCollapse: 'collapse'
+      }}
+    >
+      <tbody>
+        {board.map((row, i) => (
+          <tr key={i}>
+            {row.map((x, j) => (
+              <td
+                key={j}
+                style={{
+                  width: cellSize,
+                  height: cellSize,
+                  borderRight: thin,
+                  borderBottom: thin,
+                }}
+              > <button
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  textAlign: 'center',
+                  backgroundColor: (i === parseInt(guessX) && j === parseInt(guessY) ? 'red' : lightGrey),
+                  border: thin,
+                }}
+              >{x === 1 ? '🛳' : '🌊'}</button>
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function EditBoard({ board, setBoard }) {
   let cellSize = gridWidth / 9 + 'px';
 
   return (
@@ -340,7 +329,7 @@ function SelectBoard({ choice, setChoice }) {
                 onClick={() => {
                   setChoice([i, j]);
                 }}
-              >{i === choice[0] && j === choice[1] ? '🔫' : '🌊'}</button>
+              >{i === choice[0] && j === choice[1] ? '🔫' : '❓'}</button>
               </td>
             ))}
           </tr>
