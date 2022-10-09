@@ -81,7 +81,6 @@ class SudokuZkapp extends SmartContract {
     this.guessY.set(y);
   }
 
-  // If the guess is in one of player 1's filled squares, Player 2 is winner.
   // TODO: Allow player 2 to choose guess
   @method isHit(boardInstance: Board) {
     this.commitment1.assertEquals(boardInstance.hash());
@@ -113,7 +112,8 @@ Mina.setActiveInstance(Local);
 let feePayer = Local.testAccounts[0].privateKey;
 
 type BoardInterface = {
-  setBoard(board: number[][]): Promise<void>;
+  setBoard1(board: number[][]): Promise<void>;
+  setBoard2(board: number[][], guessX: number, guessY: number): Promise<void>;
   isHit(board: number[][]): Promise<void>;
   getState(): { commitment1: string; commitment2: string, winner: string };
 };
@@ -129,8 +129,11 @@ async function deploy() {
   toc();
 
   let zkappInterface = {
-    setBoard(board: number[][], player: number) {
-      return setBoard(zkappAddress, board, player);
+    setBoard1(board: number[][]) {
+      return setBoard1(zkappAddress, board);
+    },
+    setBoard2(board: number[][], guessX: number, guessY: number) {
+      return setBoard2(zkappAddress, board, guessX, guessY);
     },
     isHit(board: number[][]) {
       return isHit(zkappAddress, board);
@@ -151,15 +154,35 @@ async function deploy() {
   return zkappInterface;
 }
 
-async function setBoard(
+async function setBoard1(
   zkappAddress: PublicKey,
-  board: number[][],
-  player: number
+  board: number[][]
 ) {
   let zkapp = new SudokuZkapp(zkappAddress);
   try {
     let tx = await Mina.transaction(feePayer, () => {
-      player === 1 ? zkapp.setBoard1(new Board(board)) : zkapp.setBoard2(new Board(board), Field(1), Field(1));
+      zkapp.setBoard1(new Board(board));
+    });
+    tic('prove');
+    await tx.prove();
+    toc();
+    await tx.send().wait();
+  } catch (err) {
+    console.log('Solution rejected!');
+    console.error(err);
+  }
+}
+
+async function setBoard2(
+  zkappAddress: PublicKey,
+  board: number[][],
+  guessX: number,
+  guessY: number
+) {
+  let zkapp = new SudokuZkapp(zkappAddress);
+  try {
+    let tx = await Mina.transaction(feePayer, () => {
+      zkapp.setBoard2(new Board(board), Field(guessX), Field(guessY));
     });
     tic('prove');
     await tx.prove();

@@ -24,9 +24,9 @@ function App() {
       <ZkappState state={zkappState} />
       {zkappState ? (
         zkappState.commitment1 === "0" && zkappState.commitment2 === "0" ? (
-          <SetBoard {...{ zkapp, player: 1 }} pullZkappState={pullZkappState} />
+          <SetBoard1 {...{ zkapp }} pullZkappState={pullZkappState} />
         ) : zkappState.commitment1 !== "0" && zkappState.commitment2 === "0" ? (
-          <SetBoard {...{ zkapp, player: 2 }} pullZkappState={pullZkappState} />
+          <SetBoard2 {...{ zkapp }} pullZkappState={pullZkappState} />
         ) : (
           <HitBoard {...{ zkapp }} pullZkappState={pullZkappState} />
         )) : (
@@ -59,21 +59,54 @@ function DeployContract({ setZkapp }) {
   );
 }
 
-function SetBoard({ zkapp, player, pullZkappState }) {
+function SetBoard1({ zkapp, pullZkappState }) {
   let [board, setBoard] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
   let [isLoading, setLoading] = useState(false);
 
   async function submit() {
     if (isLoading) return;
     setLoading(true);
-    await zkapp.setBoard(board, player);
+    await zkapp.setBoard1(board);
     pullZkappState();
     setLoading(false);
   }
 
   return (
     <Layout>
-      <Header>Player {player}: set map layout</Header>
+      <Header>Player 1: set map layout</Header>
+
+      <Board
+        board={board}
+        setBoard={setBoard}
+      />
+
+      <div style={{ width: rightColumnWidth + 'px' }}>
+        <Space h="2.5rem" />
+        <div>You must place exactly {CAPY_COUNT} ships.</div>
+
+        <Button onClick={submit} disabled={isLoading}>
+          Set layout
+        </Button>
+      </div>
+    </Layout>
+  );
+}
+
+function SetBoard2({ zkapp, pullZkappState }) {
+  let [board, setBoard] = useState(() => Array(BOARD_WIDTH).fill().map(() => Array(BOARD_WIDTH).fill(0)));
+  let [isLoading, setLoading] = useState(false);
+
+  async function submit() {
+    if (isLoading) return;
+    setLoading(true);
+    await zkapp.setBoard2(board, 1, 1);
+    pullZkappState();
+    setLoading(false);
+  }
+
+  return (
+    <Layout>
+      <Header>Player 2: set map layout</Header>
 
       <Board
         board={board}
